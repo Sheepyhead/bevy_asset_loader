@@ -71,6 +71,13 @@ use std::fmt::Debug;
 use std::hash::Hash;
 use std::marker::PhantomData;
 
+#[cfg(feature = "progress_tracking")]
+use bevy::prelude::ExclusiveSystemDescriptorCoercion;
+#[cfg(feature = "progress_tracking")]
+use bevy_loading::Progress;
+#[cfg(feature = "progress_tracking")]
+use std::convert::TryFrom;
+
 /// Trait to mark a struct as a collection of assets
 ///
 /// Derive is supported for structs with named fields.
@@ -139,10 +146,24 @@ fn start_loading<T: Component + Debug + Clone + Eq + Hash, Assets: AssetCollecti
         handles: Assets::load(world),
         marker: PhantomData::<Assets>,
     };
+
+    #[cfg(feature = "progress_tracking")]
+    {
+        let progress_counter = world
+            .get_resource::<bevy_loading::ProgressCounter>()
+            .expect("Failed to get ProgressCounter");
+        progress_counter.manually_tick(Progress {
+            total: handles.handles.len() as u32,
+            done: 0,
+        })
+    }
     world.insert_resource(handles);
 }
 
-fn check_loading_state<T: Component + Debug + Clone + Eq + Hash, Assets: AssetCollection>(
+fn check_collection_and_insert_when_done<
+    T: Component + Debug + Clone + Eq + Hash,
+    Assets: AssetCollection,
+>(
     world: &mut World,
 ) {
     {
@@ -157,10 +178,45 @@ fn check_loading_state<T: Component + Debug + Clone + Eq + Hash, Assets: AssetCo
         let asset_server = cell
             .get_resource::<AssetServer>()
             .expect("Cannot get AssetServer resource");
-        let load_state = asset_server
-            .get_group_load_state(loading_asset_handles.handles.iter().map(|handle| handle.id));
-        if load_state != LoadState::Loaded {
-            return;
+
+        #[cfg(feature = "progress_tracking")]
+        {
+            let progress_counter = cell
+                .get_resource::<bevy_loading::ProgressCounter>()
+                .expect("Failed to get ProgressCounter");
+            let total = loading_asset_handles.handles.len();
+            let done = loading_asset_handles
+                .handles
+                .iter()
+                .map(|handle| asset_server.get_load_state(handle))
+                .filter(|load_state| load_state == &LoadState::Loaded)
+                .count();
+            println!(
+                "Progress in system: {:?}",
+                Progress {
+                    total: u32::try_from(total)
+                        .expect("More handles in one AssetCollection than u32::MAX"),
+                    done: u32::try_from(done)
+                        .expect("More handles in one AssetCollection than u32::MAX"),
+                }
+            );
+            progress_counter.manually_tick(Progress {
+                total: u32::try_from(total)
+                    .expect("More handles in one AssetCollection than u32::MAX"),
+                done: u32::try_from(done)
+                    .expect("More handles in one AssetCollection than u32::MAX"),
+            });
+            if total != done {
+                return;
+            }
+        }
+        #[cfg(not(feature = "progress_tracking"))]
+        {
+            let load_state = asset_server
+                .get_group_load_state(loading_asset_handles.handles.iter().map(|handle| handle.id));
+            if load_state != LoadState::Loaded {
+                return;
+            }
         }
 
         // Todo: fire events `AssetCollection-` Ready/Loaded/Inserted?
@@ -345,18 +401,28 @@ where
     /// # }
     /// ```
     pub fn with_collection<A: AssetCollection>(mut self) -> Self {
-        self.load = self
-            .load
-            .with_system(start_loading::<State, A>.exclusive_system());
+        let start_loading = start_loading::<State, A>.exclusive_system();
+        #[cfg(feature = "progress_tracking")]
+        let start_loading = start_loading
+            .after(bevy_loading::ReadyLabel::Pre)
+            .before(bevy_loading::ReadyLabel::Post);
+        self.load = self.load.with_system(start_loading);
+
+        let check_collection_and_insert_when_done =
+            check_collection_and_insert_when_done::<State, A>.exclusive_system();
+        #[cfg(feature = "progress_tracking")]
+        let check_collection_and_insert_when_done = check_collection_and_insert_when_done
+            .after(bevy_loading::ReadyLabel::Pre)
+            .before(bevy_loading::ReadyLabel::Post);
         self.check = self
             .check
-            .with_system(check_loading_state::<State, A>.exclusive_system());
+            .with_system(check_collection_and_insert_when_done);
         self.collection_count += 1;
 
         self
     }
 
-    /// Add any [FromWorld] resource to be inititlized after all asset collections are loaded.
+    /// Add any [FromWorld] resource to be initialized after all asset collections are loaded.
     /// ```edition2018
     /// # use bevy_asset_loader::{AssetLoader, AssetCollection};
     /// # use bevy::prelude::*;

@@ -65,7 +65,7 @@ use bevy::asset::{AssetServer, HandleUntyped, LoadState};
 use bevy::ecs::component::Component;
 use bevy::ecs::prelude::IntoExclusiveSystem;
 use bevy::ecs::schedule::State;
-use bevy::prelude::{FromWorld, SystemSet, World};
+use bevy::prelude::{FromWorld, SystemLabel, SystemSet, World};
 use bevy::utils::HashMap;
 use std::fmt::Debug;
 use std::hash::Hash;
@@ -75,6 +75,8 @@ use std::marker::PhantomData;
 use bevy::prelude::ExclusiveSystemDescriptorCoercion;
 #[cfg(feature = "progress_tracking")]
 use bevy_loading::Progress;
+#[cfg(feature = "progress_tracking")]
+use bevy_loading::ReadyLabel;
 #[cfg(feature = "progress_tracking")]
 use std::convert::TryFrom;
 
@@ -404,16 +406,17 @@ where
         let start_loading = start_loading::<State, A>.exclusive_system();
         #[cfg(feature = "progress_tracking")]
         let start_loading = start_loading
-            .after(bevy_loading::ReadyLabel::Pre)
-            .before(bevy_loading::ReadyLabel::Post);
+            .after(ReadyLabel::Pre)
+            .before(ReadyLabel::Post);
         self.load = self.load.with_system(start_loading);
 
         let check_collection_and_insert_when_done =
             check_collection_and_insert_when_done::<State, A>.exclusive_system();
         #[cfg(feature = "progress_tracking")]
         let check_collection_and_insert_when_done = check_collection_and_insert_when_done
-            .after(bevy_loading::ReadyLabel::Pre)
-            .before(bevy_loading::ReadyLabel::Post);
+            .label(AssetLoading::Check)
+            .after(ReadyLabel::Pre)
+            .before(ReadyLabel::Post);
         self.check = self
             .check
             .with_system(check_collection_and_insert_when_done);
@@ -533,4 +536,9 @@ where
             .add_system_set(self.check)
             .add_system_set(self.post_process);
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, SystemLabel)]
+pub enum AssetLoading {
+    Check,
 }

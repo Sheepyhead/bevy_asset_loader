@@ -41,20 +41,20 @@ fn expect(
 }
 
 #[allow(dead_code)]
-#[derive(AssetCollection)]
+#[derive(AssetCollection, Component)]
 struct PlopAudio {
     #[asset(path = "audio/plop.ogg")]
     plop: Handle<AudioSource>,
 }
 
 #[allow(dead_code)]
-#[derive(AssetCollection)]
+#[derive(AssetCollection, Component)]
 struct BackgroundAudio {
     #[asset(path = "audio/background.ogg")]
     background: Handle<AudioSource>,
 }
 
-#[derive(Clone, Eq, PartialEq, Debug, Hash)]
+#[derive(Clone, Component, Eq, PartialEq, Debug, Hash)]
 enum MyStates {
     Load,
     Next,

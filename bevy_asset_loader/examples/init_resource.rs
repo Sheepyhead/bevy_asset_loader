@@ -18,7 +18,7 @@ fn main() {
         .run();
 }
 
-#[derive(AssetCollection)]
+#[derive(AssetCollection, Component)]
 struct TextureAssets {
     #[asset(path = "textures/player.png")]
     player: Handle<Texture>,
@@ -26,6 +26,7 @@ struct TextureAssets {
     tree: Handle<Texture>,
 }
 
+#[derive(Component)]
 struct CombinedTexture {
     combined: Handle<Texture>,
 }
@@ -48,7 +49,7 @@ impl FromWorld for CombinedTexture {
             .enumerate()
             .map(|(index, player_value)| {
                 player_value
-                    .checked_add(tree_texture.data[index].clone())
+                    .checked_add(tree_texture.data[index])
                     .unwrap_or(u8::MAX)
             })
             .collect();
@@ -81,7 +82,7 @@ fn draw(
     });
 }
 
-#[derive(Clone, Eq, PartialEq, Debug, Hash)]
+#[derive(Clone, Component, Eq, PartialEq, Debug, Hash)]
 enum MyStates {
     AssetLoading,
     Next,

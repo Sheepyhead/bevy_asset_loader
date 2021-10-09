@@ -3,7 +3,7 @@ use bevy_asset_loader::{AssetCollection, AssetLoader};
 
 /// This example demonstrates how to load a color material from a .png file
 fn main() {
-    let mut app = App::build();
+    let mut app = App::new();
     AssetLoader::new(MyStates::AssetLoading, MyStates::Next)
         .with_collection::<MyAssets>()
         .build(&mut app);
@@ -13,7 +13,7 @@ fn main() {
         .run();
 }
 
-#[derive(AssetCollection)]
+#[derive(AssetCollection, Component)]
 struct MyAssets {
     #[asset(color_material)]
     #[asset(path = "textures/player.png")]
@@ -29,7 +29,7 @@ fn spawn_player(mut commands: Commands, texture_assets: Res<MyAssets>) {
     });
 }
 
-#[derive(Clone, Eq, PartialEq, Debug, Hash)]
+#[derive(Clone, Component, Eq, PartialEq, Debug, Hash)]
 enum MyStates {
     AssetLoading,
     Next,

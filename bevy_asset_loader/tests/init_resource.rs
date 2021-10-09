@@ -37,7 +37,7 @@ fn expect(collection: Option<Res<PostProcessed>>, mut exit: EventWriter<AppExit>
 }
 
 #[allow(dead_code)]
-#[derive(AssetCollection)]
+#[derive(AssetCollection, Component)]
 struct MyAssets {
     #[asset(path = "audio/background.ogg")]
     background: Handle<AudioSource>,
@@ -46,6 +46,7 @@ struct MyAssets {
 #[allow(dead_code)]
 // this struct could e.g. contain TextureAtlas handles or anything else
 // created from previously loaded assets
+#[derive(Component)]
 struct PostProcessed {
     background: Handle<AudioSource>,
     // use other resources/add fields
@@ -64,7 +65,7 @@ impl FromWorld for PostProcessed {
     }
 }
 
-#[derive(Clone, Eq, PartialEq, Debug, Hash)]
+#[derive(Clone, Component, Eq, PartialEq, Debug, Hash)]
 enum MyStates {
     Load,
     Next,

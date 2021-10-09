@@ -16,7 +16,7 @@ fn main() {
         .run();
 }
 
-#[derive(AssetCollection)]
+#[derive(AssetCollection, Component)]
 struct MyAssets {
     // if the sheet would have padding, we could set that with `padding_x` and `padding_y`
     #[asset(texture_atlas(tile_size_x = 100., tile_size_y = 96., columns = 8, rows = 1))]
@@ -63,7 +63,7 @@ fn animate_sprite_system(time: Res<Time>, mut query: Query<(&mut Timer, &mut Tex
     }
 }
 
-#[derive(Clone, Eq, PartialEq, Debug, Hash)]
+#[derive(Clone, Component, Eq, PartialEq, Debug, Hash)]
 enum MyStates {
     AssetLoading,
     Next,
